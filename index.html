@@ -1,0 +1,2076 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>나의 티볼 타격 자세 분석</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel Standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      background-color: #F8FAFC;
+    }
+    
+    .font-kids-title {
+      font-family: 'Jua', 'Noto Sans KR', sans-serif;
+    }
+    
+    /* Smooth transition for active cards */
+    .kid-card {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .kid-card:active {
+      transform: scale(0.98);
+    }
+
+    /* Custom bouncing animation for balls */
+    @keyframes bounce-slow {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+    .animate-bounce-slow {
+      animation: bounce-slow 1.6s ease-in-out infinite;
+    }
+
+    /* Video player custom styling */
+    video {
+      background-color: #0F172A;
+      border-radius: 1rem;
+    }
+  </style>
+</head>
+<body class="text-slate-800 antialiased select-none min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // Self-contained Lucide-compatible SVG Icon Components
+    const createSvgIcon = (children, defaultAttrs = {}) => ({ className = "w-6 h-6", ...props }) => (
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className} 
+        {...defaultAttrs}
+        {...props}
+      >
+        {children}
+      </svg>
+    );
+
+    const Video = createSvgIcon(
+      <>
+        <path d="m22 8-6 4 6 4V8Z" />
+        <rect width="14" height="12" x="2" y="6" rx="2" ry="2" />
+      </>
+    );
+
+    const Camera = createSvgIcon(
+      <>
+        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+        <circle cx="12" cy="13" r="3" />
+      </>
+    );
+
+    const Play = createSvgIcon(
+      <polygon points="6 3 20 12 6 21 6 3" />
+    );
+
+    const Pause = createSvgIcon(
+      <>
+        <rect x="6" y="4" width="4" height="16" />
+        <rect x="14" y="4" width="4" height="16" />
+      </>
+    );
+
+    const RotateCcw = createSvgIcon(
+      <>
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+        <path d="M3 3v5h5" />
+      </>
+    );
+
+    const CheckCircle = createSvgIcon(
+      <>
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+        <polyline points="22 4 12 14.01 9 11.01" />
+      </>
+    );
+
+    const Sparkles = createSvgIcon(
+      <>
+        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+        <path d="M5 3v4" />
+        <path d="M19 17v4" />
+        <path d="M3 5h4" />
+        <path d="M17 19h4" />
+      </>
+    );
+
+    const ArrowRight = createSvgIcon(
+      <>
+        <line x1="5" y1="12" x2="19" y2="12" />
+        <polyline points="12 5 19 12 12 19" />
+      </>
+    );
+
+    const ArrowLeft = createSvgIcon(
+      <>
+        <line x1="19" y1="12" x2="5" y2="12" />
+        <polyline points="12 19 5 12 12 5" />
+      </>
+    );
+
+    const AlertCircle = createSvgIcon(
+      <>
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </>
+    );
+
+    const Award = createSvgIcon(
+      <>
+        <circle cx="12" cy="8" r="6" />
+        <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+      </>
+    );
+
+    const Check = createSvgIcon(
+      <polyline points="20 6 9 17 4 12" />
+    );
+
+    const ShieldAlert = createSvgIcon(
+      <>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </>
+    );
+
+    const ChevronRight = createSvgIcon(
+      <polyline points="9 18 15 12 9 6" />
+    );
+
+    const ThumbsUp = createSvgIcon(
+      <>
+        <path d="M7 10v12" />
+        <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h3" />
+      </>
+    );
+
+    const Lightbulb = createSvgIcon(
+      <>
+        <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+        <path d="M9 18h6" />
+        <path d="M10 22h4" />
+      </>
+    );
+
+    const Search = createSvgIcon(
+      <>
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </>
+    );
+
+    const Settings = createSvgIcon(
+      <>
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    );
+
+    const Key = createSvgIcon(
+      <>
+        <path d="m21 2-2 2m-1.5 1.5L16 7l-1.5-1.5M19 5l-2.5 2.5m-3-1 1.5 1.5L4 19l-2 3 3-2 11.5-11.5Z" />
+        <circle cx="7.5" cy="16.5" r="1.5" />
+      </>
+    );
+
+    // ========================================================
+    // [선생님 전용 설정] 기본 Gemini API Key를 여기에 입력해 두면,
+    // 학생들이 QR코드로 접속했을 때 별도 입력 없이 자동 적용됩니다.
+    // ========================================================
+    const DEFAULT_TEACHER_KEY = "AQ.Ab8RN6JlrteL0vWbtZWHgY1_DJFnqpTrkuTn7UxVhs6eS5uA7g";
+
+    // Initial default application state
+    const initialAppState = {
+      currentStep: 0, // 0: Home, 1: Prep, 2: Review, 3: Self, 4: AI, 5: Compare, 6: Goal, 7: Reflection
+      video1: { file: null, url: null, duration: 0 },
+      selfAssessment: {
+        eyesOnBall: null,     // good | practice | review
+        contact: null,        // good | practice | review
+        bodyMovement: null,   // good | practice | review
+        balance: null         // good | practice | review
+      },
+      selectedGoal: null,     // eyes | contact | body | balance
+      aiAnalysis: {
+        confidence: null,
+        goodPoint: null,
+        improvementPoint: null,
+        practiceTip: null,
+        focusArea: null,
+        observationNote: null
+      },
+      comparison: null,       // similar | different | unsure
+      reflection: {
+        change: null,
+        tip: ""
+      }
+    };
+
+    // Fallback Mock AI Responses for Physical Education
+    const MOCK_AI_DATA = [
+      {
+        confidence: "high",
+        goodPoint: "공을 치는 마지막 순간까지 공을 뚫어져라 바라보는 집중력이 아주 좋아요!",
+        improvementPoint: "타격할 때 팔로만 휘두르지 않고 허리와 골반을 함께 휙 돌려보면 더 좋아요.",
+        practiceTip: "배트를 휘두를 때 배꼽을 치려는 방향 쪽으로 함께 휙 돌려보세요!",
+        focusArea: "body",
+        observationNote: "준비 자세는 안정적이며, 타격 순간 팔의 비중이 크고 상체 회전이 다소 적게 관찰되었습니다."
+      },
+      {
+        confidence: "high",
+        goodPoint: "배트를 힘차게 휘두른 뒤에도 두 발이 땅에 딱 붙어서 균형을 잘 잡았어요!",
+        improvementPoint: "배트의 중심과 티 위의 공이 부드럽게 만나도록 시선을 조금 더 고정해 봐요.",
+        practiceTip: "공에 그려진 글자나 실밥 무늬를 하나 찍어서 그 점만 보고 배트를 쳐보세요!",
+        focusArea: "eyes",
+        observationNote: "피니시 자세의 밸런스가 매우 우수하며, 타격 직전 머리의 위치가 약간 들리는 경향이 있습니다."
+      },
+      {
+        confidence: "medium",
+        goodPoint: "티 위에 놓인 공을 배트의 중심(스위트 스폿)에 탕 맞히는 능력이 뛰어납니다!",
+        improvementPoint: "공을 친 후 배트를 끝까지 크게 돌리는 팔로우스루 동작을 유지해 보세요.",
+        practiceTip: "공을 치고 나서 배트가 반대쪽 어깨 위까지 넘어가도록 끝까지 돌려보세요.",
+        focusArea: "contact",
+        observationNote: "배트와 공의 콘택트 타이밍이 적절하며 스윙 후 마무리가 조금 일찍 멈추는 패턴이 보입니다."
+      }
+    ];
+
+    function App() {
+      const [appState, setAppState] = useState(initialAppState);
+      const [notification, setNotification] = useState(null);
+      const [showSafetyGuide, setShowSafetyGuide] = useState(false);
+      const [showSettingsModal, setShowSettingsModal] = useState(false);
+      const [apiKey, setApiKey] = useState(() => {
+        try {
+          // 1. URL 쿼리 파라미터(?key=...)가 있는지 확인
+          const params = new URLSearchParams(window.location.search);
+          const urlKey = params.get('key');
+          if (urlKey) {
+            sessionStorage.setItem('gemini_api_key', urlKey.trim());
+            // 주소창에서 키 파라미터 지우기 (화면 깔끔하게 정리)
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return urlKey.trim();
+          }
+          // 2. 브라우저 세션에 저장된 키 확인
+          const storedKey = sessionStorage.getItem('gemini_api_key');
+          if (storedKey) return storedKey;
+          
+          // 3. 코드에 사전 설정된 기본 선생님 키 사용
+          return DEFAULT_TEACHER_KEY || "";
+        } catch {
+          return DEFAULT_TEACHER_KEY || "";
+        }
+      });
+      const [isAnalyzing, setIsAnalyzing] = useState(false);
+      const [isCameraActive, setIsCameraActive] = useState(false);
+
+      // Notification helper (replaces alert)
+      const notify = (message, type = 'info') => {
+        setNotification({ message, type });
+        setTimeout(() => setNotification(null), 4000);
+      };
+
+      const handleSaveApiKey = (key) => {
+        setApiKey(key);
+        try {
+          if (key) {
+            sessionStorage.setItem('gemini_api_key', key);
+          } else {
+            sessionStorage.removeItem('gemini_api_key');
+          }
+        } catch (e) {
+          console.error(e);
+        }
+        setShowSettingsModal(false);
+        notify(key ? "Gemini API 키가 설정되었습니다! (실제 AI 분석 가동)" : "API 키가 해제되어 모의 분석(Mock)으로 작동합니다.", "info");
+      };
+
+      // Step indicators list
+      const STEPS = [
+        { id: 1, label: "영상 준비" },
+        { id: 2, label: "영상 확인" },
+        { id: 3, label: "자기평가" },
+        { id: 4, label: "AI 분석" },
+        { id: 5, label: "비교하기" },
+        { id: 6, label: "목표 정하기" },
+        { id: 7, label: "배운점 정리" },
+      ];
+
+      // Cleanup blob URLs to prevent memory leaks
+      const cleanupUrls = () => {
+        if (appState.video1.url && appState.video1.url.startsWith('blob:')) {
+          URL.revokeObjectURL(appState.video1.url);
+        }
+      };
+
+      const handleRestart = () => {
+        cleanupUrls();
+        setAppState(initialAppState);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      const handleFileUpload = (event) => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('video/')) {
+          notify("재생할 수 없는 동영상입니다. 다른 영상을 선택해 주세요.", "error");
+          return;
+        }
+
+        const objectUrl = URL.createObjectURL(file);
+        
+        // Inspect video metadata (duration)
+        const tempVideo = document.createElement('video');
+        tempVideo.preload = 'metadata';
+        tempVideo.src = objectUrl;
+        tempVideo.onloadedmetadata = () => {
+          const duration = tempVideo.duration || 0;
+          if (duration > 15) {
+            notify("타격 장면이 잘 보이도록 15초 이내의 짧은 영상을 권장해요!", "warning");
+          }
+
+          setAppState(prev => ({
+            ...prev,
+            video1: { file, url: objectUrl, duration },
+            currentStep: 2
+          }));
+        };
+        tempVideo.onerror = () => {
+          notify("영상을 불러오지 못했어요. 기기의 다른 형식 영상을 선택해 주세요.", "error");
+        };
+      };
+
+      // Helper function to extract representative frames from uploaded video
+      const extractVideoFrames = async (videoUrl, frameCount = 4) => {
+        return new Promise((resolve) => {
+          const video = document.createElement('video');
+          video.src = videoUrl;
+          video.crossOrigin = 'anonymous';
+          video.muted = true;
+          video.playsInline = true;
+
+          const frames = [];
+
+          video.onloadedmetadata = async () => {
+            const duration = video.duration || 3;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Downscale to 640px width for fast payload upload to Gemini
+            const scale = Math.min(1, 640 / (video.videoWidth || 640));
+            canvas.width = (video.videoWidth || 640) * scale;
+            canvas.height = (video.videoHeight || 480) * scale;
+
+            const timePoints = [];
+            for (let i = 1; i <= frameCount; i++) {
+              timePoints.push((duration / (frameCount + 1)) * i);
+            }
+
+            for (const time of timePoints) {
+              await new Promise((res) => {
+                video.currentTime = time;
+                video.onseeked = () => {
+                  try {
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const base64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+                    if (base64) frames.push(base64);
+                  } catch (e) {
+                    console.error("Frame capture failed", e);
+                  }
+                  res();
+                };
+              });
+            }
+            resolve(frames);
+          };
+
+          video.onerror = () => {
+            resolve([]);
+          };
+        });
+      };
+
+      const runAiAnalysis = async () => {
+        setIsAnalyzing(true);
+        setAppState(prev => ({ ...prev, currentStep: 4 }));
+
+        try {
+          // If no API Key is set, use kid-friendly realistic Mock AI
+          if (!apiKey.trim()) {
+            await new Promise(resolve => setTimeout(resolve, 2200));
+            const selectedMock = MOCK_AI_DATA[Math.floor(Math.random() * MOCK_AI_DATA.length)];
+            setAppState(prev => ({
+              ...prev,
+              aiAnalysis: selectedMock
+            }));
+            setIsAnalyzing(false);
+            return;
+          }
+
+          // Real AI Integration with Gemini Vision API
+          const frames = await extractVideoFrames(appState.video1.url, 4);
+
+          const systemPrompt = `당신은 초등학교 5학년 체육 수업을 지원하는 티볼 타격 관찰 보조 AI입니다.
+학생의 티볼 타격 연속 스냅샷을 보고 운동 수행 과정에서 관찰 가능한 특징을 분석합니다.
+
+관찰 핵심 항목:
+1. 시선: 타격 순간까지 공을 끝까지 바라보는지
+2. 준비 자세: 흔들림 없이 안정적인지
+3. 타격 동작: 팔만 쓰지 않고 몸통(골반·허리)과 팔의 움직임이 연결되는지
+4. 타점: 배트와 공의 만남이 적절한지
+5. 타격 후 자세: 균형을 잃지 않고 피니시를 유지하는지
+
+반드시 지켜야 할 엄격한 규칙:
+- 비거리나 타구 속도는 절대 평가하지 않습니다.
+- 점수, 등급, 순위를 매기지 않습니다.
+- 전문적인 운동역학 용어를 쓰지 말고, 초등학교 5학년이 바로 이해할 수 있는 다정하고 쉬운 말투(~해요)를 씁니다.
+- 잘한 점은 정확히 1개(goodPoint)만 제시합니다.
+- 개선할 점은 정확히 1개(improvementPoint)만 제시합니다.
+- 학생이 바로 따라할 수 있는 구체적인 실천 팁 1개(practiceTip)를 제시합니다.
+- "더 좋아질 수 있는 점", "다음에 해볼 점"과 같은 긍정적이고 성장 지향적인 어휘를 사용합니다.`;
+
+          const userText = `이 사진들은 초등학교 5학년 학생의 티볼 타격 동작 연속 사진입니다.
+학생이 선택한 스스로의 점검:
+- 공 보기: ${appState.selfAssessment.eyesOnBall || '미선택'}
+- 타격 접촉: ${appState.selfAssessment.contact || '미선택'}
+- 몸 사용: ${appState.selfAssessment.bodyMovement || '미선택'}
+- 균형 유지: ${appState.selfAssessment.balance || '미선택'}
+- 학생이 개선하고 싶은 목표: ${appState.selectedGoal || '몸 사용하기'}
+
+사진 속 학생의 동작을 관찰하고 지정된 JSON 형식으로 분석 결과를 반환해 주세요.`;
+
+          const contentsParts = [{ text: userText }];
+          frames.forEach(frameData => {
+            contentsParts.push({
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: frameData
+              }
+            });
+          });
+
+          // System payload configured with JSON response requirement
+          const payload = {
+            contents: [{ parts: contentsParts }],
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            generationConfig: {
+              responseMimeType: "application/json"
+            }
+          };
+
+          // Dynamically detect which models are enabled for this specific API key
+          let candidateModels = [
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-exp",
+            "gemini-1.5-flash-latest",
+            "gemini-1.5-flash"
+          ];
+
+          const cleanKey = apiKey.trim();
+
+          // Attempt dynamic model discovery with x-goog-api-key header
+          try {
+            const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`, {
+              headers: {
+                'x-goog-api-key': cleanKey
+              }
+            });
+            if (listRes.ok) {
+              const listData = await listRes.json();
+              if (listData.models && Array.isArray(listData.models)) {
+                const supported = listData.models
+                  .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
+                  .map(m => m.name.replace(/^models\//, ''));
+                
+                const flashModels = supported.filter(m => m.includes("flash") && !m.includes("audio") && !m.includes("embedding"));
+                if (flashModels.length > 0) {
+                  candidateModels = [...flashModels, ...supported];
+                } else if (supported.length > 0) {
+                  candidateModels = supported;
+                }
+              }
+            } else {
+              console.warn("Dynamic model lookup skipped, status:", listRes.status);
+            }
+          } catch (listErr) {
+            console.warn("Dynamic model lookup skipped, using fallback list:", listErr);
+          }
+
+          let response = null;
+          let lastError = null;
+          const uniqueModels = [...new Set(candidateModels)];
+
+          for (const model of uniqueModels) {
+            try {
+              const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`;
+              const res = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'x-goog-api-key': cleanKey
+                },
+                body: JSON.stringify(payload)
+              });
+
+              if (res.ok) {
+                response = res;
+                break;
+              } else {
+                const errDetail = await res.text().catch(() => "");
+                console.warn(`Model [${model}] status ${res.status}:`, errDetail);
+                lastError = new Error(`구글 서버 오류 (${res.status}): ${errDetail}`);
+              }
+            } catch (err) {
+              console.warn(`Network request failed for [${model}]:`, err);
+              lastError = err;
+            }
+          }
+
+          if (!response || !response.ok) {
+            throw lastError || new Error("사용 가능한 Gemini 모델을 찾지 못했습니다.");
+          }
+
+          const result = await response.json();
+          const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+          if (jsonText) {
+            // Safely strip any potential markdown fence wrappers
+            let cleanedJson = jsonText.trim();
+            if (cleanedJson.startsWith("```")) {
+              cleanedJson = cleanedJson.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '').trim();
+            }
+            const parsed = JSON.parse(cleanedJson);
+            setAppState(prev => ({
+              ...prev,
+              aiAnalysis: {
+                confidence: parsed.confidence || "high",
+                goodPoint: parsed.goodPoint || "공을 끝까지 잘 보고 배트를 휘둘렀어요!",
+                improvementPoint: parsed.improvementPoint || "타격할 때 몸통도 함께 회전해 보세요.",
+                practiceTip: parsed.practiceTip || "배트를 휘두를 때 배꼽을 치는 방향으로 함께 돌려보세요!",
+                focusArea: parsed.focusArea || "body",
+                observationNote: parsed.observationNote || "안정적인 타격 준비와 스윙 동작이 관찰되었습니다."
+              }
+            }));
+          } else {
+            throw new Error("분석 응답 형식이 올바르지 않습니다.");
+          }
+        } catch (err) {
+          console.error("AI Analysis error:", err);
+          notify("실제 AI 호출 중 문제가 발생하여 모의 분석(Mock) 데이터로 표시합니다.", "warning");
+          const selectedMock = MOCK_AI_DATA[Math.floor(Math.random() * MOCK_AI_DATA.length)];
+          setAppState(prev => ({
+            ...prev,
+            aiAnalysis: selectedMock
+          }));
+        } finally {
+          setIsAnalyzing(false);
+        }
+      };
+
+      return (
+        <div className="flex flex-col min-h-screen bg-slate-50 text-slate-800">
+          {/* Notification Toast */}
+          {notification && (
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-11/12 px-5 py-4 rounded-2xl shadow-xl flex items-center gap-3 font-semibold text-lg animate-fade-in border-2 bg-white text-slate-800 border-amber-400">
+              <AlertCircle className="w-6 h-6 text-amber-500 shrink-0" />
+              <span className="flex-1 leading-snug">{notification.message}</span>
+            </div>
+          )}
+
+          {/* Top Progress Tracker Header */}
+          {appState.currentStep > 0 && appState.currentStep <= 7 && (
+            <header className="sticky top-0 z-30 bg-white/95 backdrop-blur shadow-sm border-b border-slate-200 px-3 py-3">
+              <div className="max-w-4xl mx-auto flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">⚾</span>
+                  <span className="font-kids-title text-xl text-sky-700 font-bold hidden sm:inline">
+                    티볼 타격 분석
+                  </span>
+                  {/* Teacher API status indicator */}
+                  <button 
+                    onClick={() => setShowSettingsModal(true)}
+                    title="선생님 AI 설정"
+                    className={`ml-1 text-xs px-2.5 py-1 rounded-full flex items-center gap-1 font-bold border transition ${
+                      apiKey ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-600 border-slate-300'
+                    }`}
+                  >
+                    <span>{apiKey ? '🟢 Gemini AI 연결됨' : '⚪ Mock 모드'}</span>
+                  </button>
+                </div>
+                {/* Steps progress bar */}
+                <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto py-1 text-sm font-bold">
+                  {STEPS.map((s, idx) => {
+                    const isActive = appState.currentStep === s.id;
+                    const isDone = appState.currentStep > s.id;
+                    return (
+                      <div key={s.id} className="flex items-center">
+                        <div className={`px-2.5 py-1.5 rounded-full flex items-center gap-1 text-xs sm:text-sm transition-colors ${
+                          isActive 
+                            ? 'bg-sky-600 text-white shadow-md ring-2 ring-sky-300 font-extrabold' 
+                            : isDone
+                            ? 'bg-emerald-100 text-emerald-800 font-semibold'
+                            : 'bg-slate-100 text-slate-400'
+                        }`}>
+                          <span>{s.id}</span>
+                          <span className="hidden md:inline">{s.label}</span>
+                        </div>
+                        {idx < STEPS.length - 1 && (
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-300 mx-0.5 shrink-0" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </header>
+          )}
+
+          {/* Main Workspace Frame */}
+          <main className="flex-1 flex flex-col max-w-4xl w-full mx-auto p-4 sm:p-6 pb-20 justify-center">
+            {appState.currentStep === 0 && (
+              <HomeScreen 
+                onStart={() => setAppState(prev => ({ ...prev, currentStep: 1 }))} 
+                onOpenSettings={() => setShowSettingsModal(true)}
+                hasApiKey={Boolean(apiKey)}
+              />
+            )}
+
+            {appState.currentStep === 1 && (
+              <Step1PrepareVideo 
+                onFileSelected={(e) => handleFileUpload(e)}
+                onStartCameraGuide={() => setShowSafetyGuide(true)}
+                onPrev={() => setAppState(prev => ({ ...prev, currentStep: 0 }))}
+              />
+            )}
+
+            {appState.currentStep === 2 && (
+              <Step2ReviewVideo 
+                videoUrl={appState.video1.url}
+                duration={appState.video1.duration}
+                onRetake={() => {
+                  cleanupUrls();
+                  setAppState(prev => ({ ...prev, currentStep: 1, video1: { file: null, url: null, duration: 0 } }));
+                }}
+                onNext={() => setAppState(prev => ({ ...prev, currentStep: 3 }))}
+              />
+            )}
+
+            {appState.currentStep === 3 && (
+              <Step3SelfAssessment 
+                selfAssessment={appState.selfAssessment}
+                selectedGoal={appState.selectedGoal}
+                onChangeAssessment={(key, val) => {
+                  setAppState(prev => ({
+                    ...prev,
+                    selfAssessment: { ...prev.selfAssessment, [key]: val }
+                  }));
+                }}
+                onChangeGoal={(goal) => {
+                  setAppState(prev => ({ ...prev, selectedGoal: goal }));
+                }}
+                onPrev={() => setAppState(prev => ({ ...prev, currentStep: 2 }))}
+                onNext={runAiAnalysis}
+              />
+            )}
+
+            {appState.currentStep === 4 && (
+              <Step4AiAnalysis 
+                isAnalyzing={isAnalyzing}
+                aiData={appState.aiAnalysis}
+                onRetry={runAiAnalysis}
+                onReselectVideo={() => {
+                  cleanupUrls();
+                  setAppState(prev => ({ ...prev, currentStep: 1 }));
+                }}
+                onNext={() => setAppState(prev => ({ ...prev, currentStep: 5 }))}
+              />
+            )}
+
+            {appState.currentStep === 5 && (
+              <Step5Comparison 
+                selfAssessment={appState.selfAssessment}
+                selectedGoal={appState.selectedGoal}
+                aiData={appState.aiAnalysis}
+                comparison={appState.comparison}
+                onSelectComparison={(comp) => setAppState(prev => ({ ...prev, comparison: comp }))}
+                onPrev={() => setAppState(prev => ({ ...prev, currentStep: 4 }))}
+                onNext={() => setAppState(prev => ({ ...prev, currentStep: 6 }))}
+              />
+            )}
+
+            {appState.currentStep === 6 && (
+              <Step6SetGoal 
+                selectedGoal={appState.selectedGoal}
+                aiData={appState.aiAnalysis}
+                onConfirmGoal={(goal) => setAppState(prev => ({ ...prev, selectedGoal: goal, currentStep: 7 }))}
+                onPrev={() => setAppState(prev => ({ ...prev, currentStep: 5 }))}
+              />
+            )}
+
+            {appState.currentStep === 7 && (
+              <Step7Reflection 
+                reflection={appState.reflection}
+                selectedGoal={appState.selectedGoal}
+                onUpdateReflection={(patch) => setAppState(prev => ({ ...prev, reflection: { ...prev.reflection, ...patch } }))}
+                onPrev={() => setAppState(prev => ({ ...prev, currentStep: 6 }))}
+                onRestart={handleRestart}
+              />
+            )}
+          </main>
+
+          {showSafetyGuide && (
+            <CameraGuideModal 
+              onClose={() => setShowSafetyGuide(false)}
+              onProceed={() => {
+                setShowSafetyGuide(false);
+                setIsCameraActive(true);
+              }}
+            />
+          )}
+
+          {/* Teacher Settings Modal */}
+          {showSettingsModal && (
+            <TeacherSettingsModal
+              currentKey={apiKey}
+              onClose={() => setShowSettingsModal(false)}
+              onSave={handleSaveApiKey}
+            />
+          )}
+
+          {/* Fullscreen Video Recording View */}
+          {isCameraActive && (
+            <CameraRecorderView 
+              onClose={() => setIsCameraActive(false)}
+              onRecordingFinished={(blob) => {
+                setIsCameraActive(false);
+                const file = new File([blob], "tball_swing.webm", { type: blob.type });
+                const url = URL.createObjectURL(blob);
+                
+                setAppState(prev => ({
+                  ...prev,
+                  video1: { file, url, duration: 5 },
+                  currentStep: 2
+                }));
+              }}
+              onError={(msg) => {
+                setIsCameraActive(false);
+                notify(msg, "error");
+              }}
+            />
+          )}
+        </div>
+      );
+    }
+
+    function HomeScreen({ onStart, onOpenSettings, hasApiKey }) {
+      return (
+        <div className="flex flex-col items-center justify-center text-center py-8 px-4 my-auto relative">
+          {/* Subtle Teacher Settings Button */}
+          <button
+            onClick={onOpenSettings}
+            className="absolute top-0 right-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs sm:text-sm font-semibold flex items-center gap-1.5 border border-slate-300 transition"
+          >
+            <Settings className="w-4 h-4 text-slate-500" />
+            <span>선생님 AI 설정</span>
+            <span className={`w-2 h-2 rounded-full ${hasApiKey ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+          </button>
+
+          {/* Animated Mascot Icon */}
+          <div className="w-28 h-28 sm:w-36 sm:h-36 bg-amber-100 rounded-full flex items-center justify-center mb-6 shadow-inner border-4 border-amber-300 animate-bounce-slow">
+            <span className="text-6xl sm:text-7xl">⚾</span>
+          </div>
+
+          <span className="inline-block bg-sky-100 text-sky-800 text-sm sm:text-base font-bold px-4 py-1.5 rounded-full mb-3">
+            초등학교 5학년 체육 수업
+          </span>
+
+          <h1 className="font-kids-title text-3xl sm:text-5xl font-extrabold text-slate-800 tracking-tight leading-tight mb-4">
+            나의 티볼 타격 자세 분석
+          </h1>
+
+          <p className="text-lg sm:text-2xl text-slate-600 font-medium max-w-lg mb-8 leading-relaxed">
+            내 타격 모습을 보고 더 나은 치기 방법을 찾아보자!
+          </p>
+
+          <button
+            onClick={onStart}
+            className="kid-card w-full sm:w-auto px-10 py-5 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white rounded-3xl font-kids-title text-2xl sm:text-3xl font-bold shadow-xl hover:shadow-2xl transition flex items-center justify-center gap-3 border-b-4 border-emerald-700"
+          >
+            <span>타격 영상 분석하기</span>
+            <ArrowRight className="w-8 h-8" />
+          </button>
+
+          <div className="mt-10 bg-white/80 border border-slate-200 rounded-2xl p-4 sm:p-5 max-w-md text-slate-600 text-base sm:text-lg leading-relaxed shadow-sm">
+            <p className="font-semibold text-slate-800 mb-1">💡 어떻게 진행되나요?</p>
+            영상을 올리고, 내가 먼저 평가한 다음<br />
+            AI의 의견을 함께 살펴봐요!
+          </div>
+        </div>
+      );
+    }
+
+    function Step1PrepareVideo({ onFileSelected, onStartCameraGuide, onPrev }) {
+      const fileInputRef = useRef(null);
+
+      return (
+        <div className="flex flex-col gap-6 py-4 animate-fade-in">
+          <div className="text-center">
+            <span className="text-amber-600 font-bold text-base">STEP 1</span>
+            <h2 className="font-kids-title text-3xl sm:text-4xl font-extrabold text-slate-800 mt-1">
+              타격 영상을 준비해요
+            </h2>
+            <p className="text-slate-600 text-lg mt-2">
+              스마트패드에 저장된 영상을 고르거나, 지금 바로 촬영해 보세요!
+            </p>
+          </div>
+
+          {/* Hidden File Input */}
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={onFileSelected} 
+            accept="video/*" 
+            className="hidden" 
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-4">
+            {/* Button A: File Selection */}
+            <button
+              onClick={() => fileInputRef.current && fileInputRef.current.click()}
+              className="kid-card flex flex-col items-center justify-center p-8 bg-white border-4 border-sky-300 hover:border-sky-500 rounded-3xl shadow-lg hover:shadow-xl text-center gap-4 transition"
+            >
+              <div className="w-20 h-20 bg-sky-100 rounded-full flex items-center justify-center text-sky-600">
+                <Video className="w-10 h-10" />
+              </div>
+              <div>
+                <h3 className="font-kids-title text-2xl font-bold text-slate-800">
+                  기기에서 영상 선택
+                </h3>
+                <p className="text-slate-500 text-sm sm:text-base mt-1">
+                  갤러리나 앨범에 저장된<br />타격 영상을 불러와요
+                </p>
+              </div>
+              <span className="mt-2 text-xs bg-sky-50 text-sky-700 font-semibold px-3 py-1 rounded-full border border-sky-200">
+                mp4, mov, webm 지원
+              </span>
+            </button>
+
+            {/* Button B: Camera Capture */}
+            <button
+              onClick={onStartCameraGuide}
+              className="kid-card flex flex-col items-center justify-center p-8 bg-white border-4 border-emerald-300 hover:border-emerald-500 rounded-3xl shadow-lg hover:shadow-xl text-center gap-4 transition"
+            >
+              <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
+                <Camera className="w-10 h-10" />
+              </div>
+              <div>
+                <h3 className="font-kids-title text-2xl font-bold text-slate-800">
+                  지금 촬영하기
+                </h3>
+                <p className="text-slate-500 text-sm sm:text-base mt-1">
+                  친구의 도움을 받아<br />내 타격을 지금 바로 찍어요
+                </p>
+              </div>
+              <span className="mt-2 text-xs bg-emerald-50 text-emerald-700 font-semibold px-3 py-1 rounded-full border border-emerald-200">
+                카메라로 바로 녹화
+              </span>
+            </button>
+          </div>
+
+          <div className="flex justify-start mt-4">
+            <button
+              onClick={onPrev}
+              className="px-5 py-3 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold flex items-center gap-2 text-lg"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              처음으로
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function Step2ReviewVideo({ videoUrl, duration, onRetake, onNext }) {
+      const videoRef = useRef(null);
+      const [isPlaying, setIsPlaying] = useState(false);
+      const [playbackRate, setPlaybackRate] = useState(1);
+      const [progress, setProgress] = useState(0);
+
+      const togglePlay = () => {
+        if (!videoRef.current) return;
+        if (videoRef.current.paused) {
+          videoRef.current.play();
+          setIsPlaying(true);
+        } else {
+          videoRef.current.pause();
+          setIsPlaying(false);
+        }
+      };
+
+      const handleTimeUpdate = () => {
+        if (!videoRef.current) return;
+        const current = videoRef.current.currentTime;
+        const total = videoRef.current.duration || 1;
+        setProgress((current / total) * 100);
+      };
+
+      const togglePlaybackRate = (rate) => {
+        if (videoRef.current) {
+          videoRef.current.playbackRate = rate;
+          setPlaybackRate(rate);
+        }
+      };
+
+      return (
+        <div className="flex flex-col gap-5 py-4 animate-fade-in max-w-2xl mx-auto w-full">
+          <div className="text-center">
+            <span className="text-amber-600 font-bold text-base">STEP 2</span>
+            <h2 className="font-kids-title text-3xl sm:text-4xl font-extrabold text-slate-800">
+              내 타격을 먼저 살펴봐요
+            </h2>
+            <p className="text-slate-600 text-lg mt-1">
+              천천히 보면서 내 타격 모습을 살펴보세요.
+            </p>
+          </div>
+
+          {/* Video Container */}
+          <div className="relative bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-4 border-slate-700">
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              playsInline
+              onTimeUpdate={handleTimeUpdate}
+              onEnded={() => setIsPlaying(false)}
+              className="w-full aspect-[4/3] sm:aspect-video object-contain"
+            />
+
+            {/* Custom Overlay Controls */}
+            <div className="p-4 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent flex flex-col gap-2">
+              {/* Progress bar */}
+              <div 
+                className="w-full h-3 bg-slate-700/80 rounded-full cursor-pointer overflow-hidden"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const clickPos = (e.clientX - rect.left) / rect.width;
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = clickPos * videoRef.current.duration;
+                  }
+                }}
+              >
+                <div 
+                  className="h-full bg-amber-400 rounded-full transition-all duration-100"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+
+              {/* Playback action bar */}
+              <div className="flex items-center justify-between mt-2">
+                <button
+                  onClick={togglePlay}
+                  className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-2xl flex items-center gap-2 font-bold text-base transition"
+                >
+                  {isPlaying ? <Pause className="w-5 h-5 fill-white" /> : <Play className="w-5 h-5 fill-white" />}
+                  <span>{isPlaying ? "일시정지" : "재생"}</span>
+                </button>
+
+                {/* Speed Controls */}
+                <div className="flex items-center gap-2 bg-white/10 p-1 rounded-2xl">
+                  <button
+                    onClick={() => togglePlaybackRate(0.5)}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-sm sm:text-base transition ${
+                      playbackRate === 0.5 ? 'bg-amber-400 text-slate-900 shadow' : 'text-white hover:bg-white/10'
+                    }`}
+                  >
+                    0.5배속 (느리게)
+                  </button>
+                  <button
+                    onClick={() => togglePlaybackRate(1)}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-sm sm:text-base transition ${
+                      playbackRate === 1 ? 'bg-white text-slate-900 shadow' : 'text-white hover:bg-white/10'
+                    }`}
+                  >
+                    1배속 (보통)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+            <button
+              onClick={onRetake}
+              className="py-4 px-6 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-kids-title text-xl font-bold flex items-center justify-center gap-2 transition"
+            >
+              <RotateCcw className="w-5 h-5" />
+              다시 선택하기
+            </button>
+            <button
+              onClick={onNext}
+              className="kid-card py-4 px-6 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white font-kids-title text-2xl font-bold flex items-center justify-center gap-3 shadow-lg border-b-4 border-sky-700 transition"
+            >
+              <span>내 타격 평가하기</span>
+              <ArrowRight className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function Step3SelfAssessment({ selfAssessment, selectedGoal, onChangeAssessment, onChangeGoal, onPrev, onNext }) {
+      const questions = [
+        {
+          key: "eyesOnBall",
+          num: 1,
+          title: "공을 끝까지 보면서 쳤나요?",
+          icon: "👀"
+        },
+        {
+          key: "contact",
+          num: 2,
+          title: "배트와 공을 잘 맞혔나요?",
+          icon: "🎯"
+        },
+        {
+          key: "bodyMovement",
+          num: 3,
+          title: "팔뿐만 아니라 몸도 함께 움직였나요?",
+          icon: "🌀"
+        },
+        {
+          key: "balance",
+          num: 4,
+          title: "타격 후 몸의 균형을 유지했나요?",
+          icon: "⚖️"
+        }
+      ];
+
+      const goalOptions = [
+        { id: "eyes", label: "공을 끝까지 보기", icon: "👀" },
+        { id: "contact", label: "배트와 공 정확하게 맞히기", icon: "🎯" },
+        { id: "body", label: "몸을 함께 사용하기", icon: "🌀" },
+        { id: "balance", label: "균형 유지하기", icon: "⚖️" }
+      ];
+
+      // Verification: Check if all 4 questions are answered and a goal is picked
+      const isComplete = questions.every(q => selfAssessment[q.key] !== null) && selectedGoal !== null;
+
+      return (
+        <div className="flex flex-col gap-6 py-4 animate-fade-in max-w-2xl mx-auto w-full">
+          <div className="text-center">
+            <span className="text-amber-600 font-bold text-base">STEP 3</span>
+            <h2 className="font-kids-title text-3xl sm:text-4xl font-extrabold text-slate-800">
+              먼저 내가 평가해 볼까요?
+            </h2>
+            <p className="text-slate-600 text-lg mt-1">
+              영상을 떠올리며 내 타격을 솔직하게 스스로 살펴봐요.
+            </p>
+          </div>
+
+          {/* 4 Rubric Questions */}
+          <div className="flex flex-col gap-4">
+            {questions.map((q) => {
+              const currentVal = selfAssessment[q.key];
+              return (
+                <div key={q.key} className="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-2xl">{q.icon}</span>
+                    <h3 className="font-bold text-lg sm:text-xl text-slate-800">
+                      <span className="text-sky-600 mr-1.5">{q.num}.</span> {q.title}
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <button
+                      type="button"
+                      onClick={() => onChangeAssessment(q.key, "good")}
+                      className={`kid-card py-3 px-2 rounded-2xl flex flex-col items-center justify-center gap-1 font-bold text-sm sm:text-base border-2 transition ${
+                        currentVal === "good" 
+                          ? 'bg-emerald-500 text-white border-emerald-600 shadow-md ring-2 ring-emerald-200' 
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="text-2xl">😊</span>
+                      <span>잘했어요</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onChangeAssessment(q.key, "practice")}
+                      className={`kid-card py-3 px-2 rounded-2xl flex flex-col items-center justify-center gap-1 font-bold text-sm sm:text-base border-2 transition ${
+                        currentVal === "practice" 
+                          ? 'bg-amber-400 text-slate-900 border-amber-500 shadow-md ring-2 ring-amber-200' 
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="text-2xl">🙂</span>
+                      <span className="text-center leading-tight">조금 더<br className="sm:hidden" /> 연습해요</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onChangeAssessment(q.key, "review")}
+                      className={`kid-card py-3 px-2 rounded-2xl flex flex-col items-center justify-center gap-1 font-bold text-sm sm:text-base border-2 transition ${
+                        currentVal === "review" 
+                          ? 'bg-sky-400 text-slate-900 border-sky-500 shadow-md ring-2 ring-sky-200' 
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="text-2xl">🤔</span>
+                      <span className="text-center leading-tight">다시<br className="sm:hidden" /> 살펴봐요</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Section 10: Select Next Target Improvement */}
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 shadow-sm mt-2">
+            <div className="text-center mb-4">
+              <span className="bg-amber-200 text-amber-900 text-xs sm:text-sm font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
+                한 번에 하나만 바꿔 봐요!
+              </span>
+              <h3 className="font-kids-title text-2xl font-bold text-slate-800 mt-2">
+                내가 다음에 고쳐보고 싶은 것은?
+              </h3>
+              <p className="text-slate-600 text-sm mt-0.5">
+                가장 신경 써보고 싶은 1가지를 골라보세요.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {goalOptions.map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => onChangeGoal(opt.id)}
+                  className={`kid-card p-4 rounded-2xl font-bold text-left flex items-center gap-3 border-2 transition ${
+                    selectedGoal === opt.id
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-md'
+                      : 'bg-white text-slate-800 border-slate-200 hover:border-amber-200'
+                  }`}
+                >
+                  <span className="text-2xl">{opt.icon}</span>
+                  <span className="text-base sm:text-lg">{opt.label}</span>
+                  {selectedGoal === opt.id && <Check className="w-5 h-5 ml-auto text-white stroke-[3]" />}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <div className="flex items-center justify-between gap-4 mt-2">
+            <button
+              onClick={onPrev}
+              className="py-4 px-6 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold flex items-center gap-2 text-lg"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              영상 다시 보기
+            </button>
+
+            <button
+              onClick={onNext}
+              disabled={!isComplete}
+              className={`kid-card py-4 px-8 rounded-2xl font-kids-title text-2xl font-bold flex items-center gap-3 shadow-lg border-b-4 transition ${
+                isComplete 
+                  ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-700 cursor-pointer' 
+                  : 'bg-slate-300 text-slate-500 border-slate-400 cursor-not-allowed'
+              }`}
+            >
+              <span>AI 분석 보기</span>
+              <Sparkles className="w-6 h-6" />
+            </button>
+          </div>
+          {!isComplete && (
+            <p className="text-center text-sm font-semibold text-rose-500 -mt-2">
+              * 4가지 평가와 다음 목표 1가지를 모두 골라주세요!
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    function Step4AiAnalysis({ isAnalyzing, aiData, onRetry, onReselectVideo, onNext }) {
+      if (isAnalyzing) {
+        return (
+          <div className="flex flex-col items-center justify-center text-center py-16 px-4 animate-fade-in my-auto">
+            <div className="relative w-32 h-32 flex items-center justify-center mb-6">
+              <div className="absolute inset-0 rounded-full border-4 border-sky-200 border-t-sky-600 animate-spin"></div>
+              <span className="text-5xl animate-bounce-slow">⚾</span>
+            </div>
+            <h2 className="font-kids-title text-3xl sm:text-4xl font-extrabold text-slate-800">
+              AI가 내 타격을 살펴보고 있어요
+            </h2>
+            <p className="text-slate-600 text-lg mt-2 font-medium">
+              영상의 타격 순간과 자세를 꼼꼼히 관찰하는 중이에요!
+            </p>
+          </div>
+        );
+      }
+
+      if (!aiData || !aiData.goodPoint) {
+        return (
+          <div className="flex flex-col items-center justify-center text-center py-12 px-4 max-w-lg mx-auto">
+            <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center text-rose-600 mb-4">
+              <AlertCircle className="w-10 h-10" />
+            </div>
+            <h2 className="font-kids-title text-2xl sm:text-3xl font-extrabold text-slate-800">
+              영상을 분석하지 못했어요
+            </h2>
+            <p className="text-slate-600 text-base mt-2 mb-6">
+              다시 시도하거나 영상을 다시 올려 주세요.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
+              <button
+                onClick={onRetry}
+                className="flex-1 py-3 px-5 rounded-2xl bg-sky-500 text-white font-bold text-lg hover:bg-sky-600 transition"
+              >
+                다시 분석하기
+              </button>
+              <button
+                onClick={onReselectVideo}
+                className="flex-1 py-3 px-5 rounded-2xl bg-slate-200 text-slate-700 font-bold text-lg hover:bg-slate-300 transition"
+              >
+                영상 다시 선택하기
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // Confidence badge text
+      const confidenceText = {
+        high: "영상에서 움직임을 비교적 잘 확인할 수 있어요.",
+        medium: "일부 움직임을 확인했어요. 영상을 다시 보면서 함께 확인해 보세요.",
+        low: "영상만으로 자세를 정확하게 확인하기 어려워요."
+      }[aiData.confidence || "high"];
+
+      return (
+        <div className="flex flex-col gap-6 py-4 animate-fade-in max-w-2xl mx-auto w-full">
+          <div className="text-center">
+            <span className="text-amber-600 font-bold text-base">STEP 4</span>
+            <h2 className="font-kids-title text-3xl sm:text-4xl font-extrabold text-slate-800">
+              AI가 내 타격에서 발견한 점
+            </h2>
+            <p className="text-slate-600 text-lg mt-1">
+              AI 친구가 본 나의 멋진 점과 추천하는 방법이에요.
+            </p>
+          </div>
+
+          {/* Cards Display */}
+          <div className="flex flex-col gap-4">
+            {/* Card 1: Good Point */}
+            <div className="bg-emerald-50 border-2 border-emerald-300 rounded-3xl p-5 sm:p-6 shadow-sm">
+              <div className="flex items-center gap-3 text-emerald-800 mb-2">
+                <div className="w-10 h-10 rounded-full bg-emerald-200 flex items-center justify-center shrink-0">
+                  <ThumbsUp className="w-5 h-5 text-emerald-700" />
+                </div>
+                <h3 className="font-kids-title text-2xl font-bold">
+                  잘하고 있는 점
+                </h3>
+              </div>
+              <p className="text-slate-800 text-lg sm:text-xl font-bold pl-13 leading-relaxed">
+                "{aiData.goodPoint}"
+              </p>
+            </div>
+
+            {/* Card 2: Improvement Point */}
+            <div className="bg-sky-50 border-2 border-sky-300 rounded-3xl p-5 sm:p-6 shadow-sm">
+              <div className="flex items-center gap-3 text-sky-800 mb-2">
+                <div className="w-10 h-10 rounded-full bg-sky-200 flex items-center justify-center shrink-0">
+                  <Search className="w-5 h-5 text-sky-700" />
+                </div>
+                <h3 className="font-kids-title text-2xl font-bold">
+                  다음에 해볼 점
+                </h3>
+              </div>
+              <p className="text-slate-800 text-lg sm:text-xl font-bold pl-13 leading-relaxed">
+                "{aiData.improvementPoint}"
+              </p>
+            </div>
+
+            {/* Card 3: Practice Tip */}
+            <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 sm:p-6 shadow-sm">
+              <div className="flex items-center gap-3 text-amber-800 mb-2">
+                <div className="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center shrink-0">
+                  <Lightbulb className="w-5 h-5 text-amber-700" />
+                </div>
+                <h3 className="font-kids-title text-2xl font-bold">
+                  이렇게 해보세요
+                </h3>
+              </div>
+              <p className="text-slate-800 text-lg sm:text-xl font-bold pl-13 leading-relaxed">
+                💡 {aiData.practiceTip}
+              </p>
+            </div>
+          </div>
+
+          {/* AI Observation Note (Grounding) */}
+          {aiData.observationNote && (
+            <div className="bg-slate-100 rounded-2xl p-3.5 border border-slate-200 text-xs sm:text-sm text-slate-600">
+              <span className="font-bold text-slate-700 mr-1.5">👀 영상 관찰 메모:</span>
+              <span>{aiData.observationNote}</span>
+            </div>
+          )}
+
+          {/* Confidence & Disclaimer notice */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center text-sm sm:text-base text-slate-600 shadow-sm flex flex-col gap-1">
+            <p className="font-bold text-sky-700 flex items-center justify-center gap-1.5">
+              <span>🔎 신뢰도:</span> {confidenceText}
+            </p>
+            <p className="text-slate-500 text-xs sm:text-sm">
+              AI의 의견은 참고 자료예요. 내 영상을 다시 보고 직접 확인해 보세요.
+            </p>
+          </div>
+
+          {/* Next Button */}
+          <button
+            onClick={onNext}
+            className="kid-card py-4 px-8 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white font-kids-title text-2xl font-bold flex items-center justify-center gap-3 shadow-lg border-b-4 border-sky-700 transition"
+          >
+            <span>내 생각과 AI 비교하기</span>
+            <ArrowRight className="w-6 h-6" />
+          </button>
+        </div>
+      );
+    }
+
+    function Step5Comparison({ selfAssessment, selectedGoal, aiData, comparison, onSelectComparison, onPrev, onNext }) {
+      const goalLabels = {
+        eyes: "공을 끝까지 보기",
+        contact: "배트와 공 정확하게 맞히기",
+        body: "몸을 함께 사용하기",
+        balance: "균형 유지하기"
+      };
+
+      const rubricLabels = {
+        good: "잘했어요 😊",
+        practice: "조금 더 연습 🙂",
+        review: "다시 살펴봐요 🤔"
+      };
+
+      return (
+        <div className="flex flex-col gap-6 py-4 animate-fade-in max-w-2xl mx-auto w-full">
+          <div className="text-center">
+            <span className="text-amber-600 font-bold text-base">STEP 5</span>
+            <h2 className="font-kids-title text-3xl sm:text-4xl font-extrabold text-slate-800">
+              내 생각과 AI의 생각은 어떨까요?
+            </h2>
+            <p className="text-slate-600 text-lg mt-1">
+              내가 스스로 느낀 점과 AI가 관찰한 점을 나란히 비교해 봐요.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Card 1: My thoughts */}
+            <div className="bg-white border-3 border-amber-300 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">🙋</span>
+                  <h3 className="font-kids-title text-2xl font-bold text-amber-800">내 생각</h3>
+                </div>
+                <div className="space-y-2 text-sm text-slate-700">
+                  <div className="bg-amber-50 p-2.5 rounded-xl">
+                    <span className="font-bold text-slate-900">공 보기:</span> {rubricLabels[selfAssessment.eyesOnBall] || "-"}
+                  </div>
+                  <div className="bg-amber-50 p-2.5 rounded-xl">
+                    <span className="font-bold text-slate-900">공 맞히기:</span> {rubricLabels[selfAssessment.contact] || "-"}
+                  </div>
+                  <div className="bg-amber-50 p-2.5 rounded-xl">
+                    <span className="font-bold text-slate-900">몸 사용:</span> {rubricLabels[selfAssessment.bodyMovement] || "-"}
+                  </div>
+                  <div className="bg-amber-50 p-2.5 rounded-xl">
+                    <span className="font-bold text-slate-900">균형 유지:</span> {rubricLabels[selfAssessment.balance] || "-"}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 pt-3 border-t border-amber-200">
+                <span className="text-xs font-bold text-amber-800 block">내가 고른 개선 목표:</span>
+                <span className="font-bold text-base text-slate-900">✨ {goalLabels[selectedGoal]}</span>
+              </div>
+            </div>
+
+            {/* Card 2: AI thoughts */}
+            <div className="bg-white border-3 border-sky-300 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">🤖</span>
+                  <h3 className="font-kids-title text-2xl font-bold text-sky-800">AI의 관찰</h3>
+                </div>
+                <div className="space-y-3 text-sm text-slate-700">
+                  <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+                    <span className="font-bold text-emerald-800 block mb-0.5">👍 잘한 점:</span>
+                    <span className="text-slate-800 leading-snug">{aiData.goodPoint}</span>
+                  </div>
+                  <div className="bg-sky-50 p-3 rounded-xl border border-sky-200">
+                    <span className="font-bold text-sky-800 block mb-0.5">🔍 제안점:</span>
+                    <span className="text-slate-800 leading-snug">{aiData.improvementPoint}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 pt-3 border-t border-sky-200">
+                <span className="text-xs font-bold text-sky-800 block">AI의 실천 팁:</span>
+                <span className="font-bold text-sm text-slate-900">💡 {aiData.practiceTip}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Comparison Question */}
+          <div className="bg-slate-100 rounded-3xl p-5 border border-slate-300 text-center">
+            <h4 className="font-kids-title text-2xl font-bold text-slate-800 mb-3">
+              두 생각이 비슷한가요?
+            </h4>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <button
+                onClick={() => onSelectComparison("similar")}
+                className={`kid-card py-3 px-2 rounded-2xl font-bold text-sm sm:text-base border-2 transition ${
+                  comparison === "similar"
+                    ? 'bg-emerald-500 text-white border-emerald-600 shadow'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                🟢 비슷해요
+              </button>
+              <button
+                onClick={() => onSelectComparison("different")}
+                className={`kid-card py-3 px-2 rounded-2xl font-bold text-sm sm:text-base border-2 transition ${
+                  comparison === "different"
+                    ? 'bg-amber-500 text-white border-amber-600 shadow'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                🟡 조금 달라요
+              </button>
+              <button
+                onClick={() => onSelectComparison("unsure")}
+                className={`kid-card py-3 px-2 rounded-2xl font-bold text-sm sm:text-base border-2 transition ${
+                  comparison === "unsure"
+                    ? 'bg-sky-500 text-white border-sky-600 shadow'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                🔵 잘 모르겠어요
+              </button>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <div className="flex items-center justify-between gap-4 mt-2">
+            <button
+              onClick={onPrev}
+              className="py-4 px-6 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold flex items-center gap-2 text-lg"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              이전으로
+            </button>
+            <button
+              onClick={onNext}
+              disabled={!comparison}
+              className={`kid-card py-4 px-8 rounded-2xl font-kids-title text-2xl font-bold flex items-center gap-3 shadow-lg border-b-4 transition ${
+                comparison
+                  ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-700 cursor-pointer'
+                  : 'bg-slate-300 text-slate-500 border-slate-400 cursor-not-allowed'
+              }`}
+            >
+              <span>다음 목표 정하기</span>
+              <ArrowRight className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function Step6SetGoal({ selectedGoal, aiData, onConfirmGoal, onPrev }) {
+      const [finalGoal, setFinalGoal] = useState(selectedGoal || "body");
+
+      const goalOptions = [
+        { id: "eyes", label: "공을 끝까지 보기", icon: "👀" },
+        { id: "contact", label: "배트와 공 정확하게 맞히기", icon: "🎯" },
+        { id: "body", label: "몸을 함께 사용하기", icon: "🌀" },
+        { id: "balance", label: "균형 유지하기", icon: "⚖️" }
+      ];
+
+      const goalLabels = {
+        eyes: "공을 끝까지 보기",
+        contact: "배트와 공 정확하게 맞히기",
+        body: "몸을 함께 사용하기",
+        balance: "균형 유지하기"
+      };
+
+      return (
+        <div className="flex flex-col gap-6 py-4 animate-fade-in max-w-2xl mx-auto w-full">
+          <div className="text-center">
+            <span className="text-amber-600 font-bold text-base">STEP 6</span>
+            <h2 className="font-kids-title text-3xl sm:text-4xl font-extrabold text-slate-800">
+              다음 타격에서 한 가지 바꿔 볼까요?
+            </h2>
+            <p className="text-slate-600 text-lg mt-1">
+              여러 개를 한 번에 바꾸면 어려워요. 딱 1개에만 집중해요!
+            </p>
+          </div>
+
+          {/* Quick summary comparison */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-4 rounded-3xl border border-slate-200 shadow-sm text-sm">
+            <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200">
+              <span className="font-bold text-amber-900 block mb-1">내가 생각한 목표</span>
+              <span className="text-base font-bold text-slate-800">{goalLabels[selectedGoal]}</span>
+            </div>
+            <div className="bg-sky-50 p-3 rounded-2xl border border-sky-200">
+              <span className="font-bold text-sky-900 block mb-1">AI가 제안한 목표</span>
+              <span className="text-base font-bold text-slate-800">{aiData?.improvementPoint || "몸을 함께 회전하기"}</span>
+            </div>
+          </div>
+
+          <div className="text-center my-2">
+            <span className="bg-emerald-100 text-emerald-800 font-extrabold px-4 py-1.5 rounded-full text-base border border-emerald-300">
+              이번에는 이것 하나만 집중해 봐요! 🎯
+            </span>
+          </div>
+
+          {/* Choice list */}
+          <div className="grid grid-cols-1 gap-3">
+            {goalOptions.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setFinalGoal(opt.id)}
+                className={`kid-card p-5 rounded-3xl font-kids-title text-xl sm:text-2xl font-bold flex items-center justify-between border-4 transition ${
+                  finalGoal === opt.id
+                    ? 'bg-amber-400 text-slate-900 border-amber-500 shadow-lg ring-4 ring-amber-100'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-amber-300'
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <span className="text-3xl">{opt.icon}</span>
+                  <span>{opt.label}</span>
+                </div>
+                {finalGoal === opt.id && (
+                  <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center">
+                    <Check className="w-5 h-5 stroke-[3]" />
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Next CTA */}
+          <div className="flex items-center justify-between gap-4 mt-4">
+            <button
+              onClick={onPrev}
+              className="py-4 px-6 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold flex items-center gap-2 text-lg"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              이전으로
+            </button>
+            <button
+              onClick={() => onConfirmGoal(finalGoal)}
+              className="kid-card flex-1 py-5 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-kids-title text-2xl font-bold flex items-center justify-center gap-3 shadow-xl border-b-4 border-emerald-700 transition"
+            >
+              <span>배운 점 정리하러 가기</span>
+              <ArrowRight className="w-7 h-7" />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function Step7Reflection({ reflection, selectedGoal, onUpdateReflection, onPrev, onRestart }) {
+      const [isSubmitted, setIsSubmitted] = useState(false);
+
+      const goalLabels = {
+        eyes: "공을 끝까지 보기",
+        contact: "배트와 공 정확하게 맞히기",
+        body: "몸을 함께 사용하기",
+        balance: "균형 유지하기"
+      };
+
+      const changeOptions = [
+        "공을 끝까지 보는 것이 가장 중요하다고 느꼈어요.",
+        "배트와 공을 정확하게 맞히는 연습이 필요하다고 느꼈어요.",
+        "팔뿐만 아니라 몸통도 함께 회전해야겠다고 느꼈어요.",
+        "타격 후 몸의 균형을 끝까지 잡아야겠다고 느꼈어요.",
+        "아직 어렵지만 다음 연습 때 꼭 실천해 볼래요."
+      ];
+
+      if (isSubmitted) {
+        return (
+          <div className="flex flex-col items-center justify-center text-center py-12 px-4 animate-fade-in my-auto">
+            <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-6 shadow-md border-4 border-emerald-300">
+              <Award className="w-12 h-12" />
+            </div>
+            <h2 className="font-kids-title text-4xl font-extrabold text-slate-800 mb-3">
+              오늘 수업도 멋지게 완료! 🎉
+            </h2>
+            <p className="text-slate-600 text-xl font-medium max-w-md mb-8">
+              내 움직임을 스스로 살펴보고 집중할 점을 찾은 여러분 모두 훌륭한 티볼 선수예요!
+            </p>
+
+            <button
+              onClick={onRestart}
+              className="kid-card py-4 px-10 rounded-3xl bg-sky-500 hover:bg-sky-600 text-white font-kids-title text-2xl font-bold shadow-xl border-b-4 border-sky-700 transition"
+            >
+              처음 화면으로 돌아가기
+            </button>
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex flex-col gap-6 py-4 animate-fade-in max-w-2xl mx-auto w-full">
+          <div className="text-center">
+            <span className="text-amber-600 font-bold text-base">STEP 7</span>
+            <h2 className="font-kids-title text-3xl sm:text-4xl font-extrabold text-slate-800">
+              오늘 나는 무엇을 발견했을까요?
+            </h2>
+            <div className="inline-block bg-amber-100 text-amber-900 border border-amber-300 px-4 py-1.5 rounded-2xl font-bold text-base mt-2">
+              내가 집중하기로 한 목표: <span className="text-amber-800 underline font-extrabold">{goalLabels[selectedGoal] || "내가 선택한 목표"}</span>
+            </div>
+            <p className="text-slate-600 text-lg mt-1">
+              오늘 영상을 관찰하며 느낀 점과 나만의 비법을 기록해 봐요.
+            </p>
+          </div>
+
+          {/* Question 1 */}
+          <div className="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-sm">
+            <h3 className="font-bold text-lg sm:text-xl text-slate-800 mb-3 flex items-center gap-2">
+              <span className="text-emerald-600">Q1.</span> 오늘 내 타격을 관찰하고 새롭게 알게 된 점은?
+            </h3>
+            <div className="space-y-2">
+              {changeOptions.map((opt, i) => (
+                <button
+                  key={i}
+                  onClick={() => onUpdateReflection({ change: opt })}
+                  className={`kid-card w-full p-3.5 rounded-2xl text-left font-bold text-base border-2 flex items-center justify-between transition ${
+                    reflection.change === opt
+                      ? 'bg-emerald-500 text-white border-emerald-600 shadow'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>{opt}</span>
+                  {reflection.change === opt && <Check className="w-5 h-5" />}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Question 2 */}
+          <div className="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-bold text-lg sm:text-xl text-slate-800 flex items-center gap-2">
+                <span className="text-emerald-600">Q2.</span> 오늘 내가 발견한 나의 타격 비법은?
+              </h3>
+              <span className="text-xs text-slate-400 font-bold">
+                {reflection.tip.length}/50자
+              </span>
+            </div>
+            <p className="text-slate-500 text-xs sm:text-sm mb-3">
+              예: "공을 끝까지 보고 치기", "배꼽을 공 치는 곳으로 돌리기"
+            </p>
+            <input
+              type="text"
+              maxLength={50}
+              value={reflection.tip}
+              onChange={(e) => onUpdateReflection({ tip: e.target.value })}
+              placeholder="나만의 타격 비법을 짧게 적어보세요 (최대 50자)"
+              className="w-full p-4 rounded-2xl border-2 border-slate-300 focus:border-emerald-500 focus:outline-none text-base sm:text-lg font-medium"
+            />
+          </div>
+
+          {/* Navigation */}
+          <div className="flex items-center justify-between gap-4 mt-2">
+            <button
+              onClick={onPrev}
+              className="py-4 px-6 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold flex items-center gap-2 text-lg"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              목표 다시 보기
+            </button>
+            <button
+              onClick={() => setIsSubmitted(true)}
+              disabled={!reflection.change}
+              className={`kid-card flex-1 py-5 px-8 rounded-2xl font-kids-title text-2xl font-bold flex items-center justify-center gap-3 shadow-xl border-b-4 transition ${
+                reflection.change
+                  ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-700 cursor-pointer'
+                  : 'bg-slate-300 text-slate-500 border-slate-400 cursor-not-allowed'
+              }`}
+            >
+              <span>수업 마치기</span>
+              <CheckCircle className="w-7 h-7" />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function CameraGuideModal({ onClose, onProceed }) {
+      return (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border-4 border-amber-300 animate-fade-in">
+            {/* Safety Warning Header */}
+            <div className="bg-amber-100 border border-amber-300 rounded-2xl p-3.5 mb-5 flex items-center gap-3 text-amber-900">
+              <ShieldAlert className="w-8 h-8 text-amber-600 shrink-0" />
+              <p className="text-sm sm:text-base font-bold leading-tight">
+                ⚠️ 타격하는 사람 주변에 친구가 없는지 확인하고 안전하게 촬영하세요!
+              </p>
+            </div>
+
+            <h3 className="font-kids-title text-2xl sm:text-3xl font-extrabold text-slate-800 text-center mb-3">
+              이렇게 찍어 주세요! 📹
+            </h3>
+            
+            <p className="text-center text-slate-600 text-sm sm:text-base mb-5 font-medium">
+              타격하는 학생의 몸과 배트가 화면 안에 모두 들어오도록 찍어 주세요.
+            </p>
+
+            {/* Checklist items */}
+            <div className="space-y-2.5 bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-6 text-sm sm:text-base font-semibold text-slate-700">
+              <div className="flex items-center gap-2 text-emerald-700">
+                <Check className="w-5 h-5 text-emerald-500 stroke-[3]" />
+                <span>몸 전체가 보이게</span>
+              </div>
+              <div className="flex items-center gap-2 text-emerald-700">
+                <Check className="w-5 h-5 text-emerald-500 stroke-[3]" />
+                <span>배트가 보이게</span>
+              </div>
+              <div className="flex items-center gap-2 text-emerald-700">
+                <Check className="w-5 h-5 text-emerald-500 stroke-[3]" />
+                <span>공과 티가 보이게</span>
+              </div>
+              <div className="flex items-center gap-2 text-emerald-700">
+                <Check className="w-5 h-5 text-emerald-500 stroke-[3]" />
+                <span>타격 순간이 잘 보이게</span>
+              </div>
+              <div className="flex items-center gap-2 text-emerald-700">
+                <Check className="w-5 h-5 text-emerald-500 stroke-[3]" />
+                <span>카메라는 흔들리지 않게 고정하기</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={onClose}
+                className="py-4 px-5 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-lg"
+              >
+                취소
+              </button>
+              <button
+                onClick={onProceed}
+                className="kid-card flex-1 py-4 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-kids-title text-2xl font-bold flex items-center justify-center gap-2 shadow-lg border-b-4 border-emerald-700"
+              >
+                <span>촬영 시작</span>
+                <Camera className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function TeacherSettingsModal({ currentKey, onClose, onSave }) {
+      const [inputKey, setInputKey] = useState(currentKey || "");
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-4 border-sky-300 animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-sky-100 rounded-2xl flex items-center justify-center text-sky-600">
+                <Key className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-kids-title text-2xl font-bold text-slate-800">
+                  선생님 AI 설정
+                </h3>
+                <p className="text-xs text-slate-500">Google Gemini API 연동</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs text-slate-600 mb-4 leading-relaxed">
+              <p className="font-bold text-slate-800 mb-1">ℹ️ 어떻게 작동하나요?</p>
+              • <strong>API Key 입력 시</strong>: 학생이 올린 영상에서 타격 주요 장면(스냅샷 4컷)을 추출하여 <strong>실제 Gemini AI</strong>가 직접 분석합니다.<br />
+              • <strong>미입력 또는 삭제 시</strong>: 비용이나 키 없이도 <strong>모의 분석(Mock AI)</strong>으로 부드럽게 작동합니다.
+            </div>
+
+            <label className="block text-sm font-bold text-slate-700 mb-1.5">
+              Gemini API Key
+            </label>
+            <input
+              type="password"
+              value={inputKey}
+              onChange={(e) => setInputKey(e.target.value)}
+              placeholder="AQ.Ab... 또는 AIzaSy..."
+              className="w-full p-3.5 rounded-2xl border-2 border-slate-300 focus:border-sky-500 focus:outline-none font-mono text-sm mb-2"
+            />
+            <p className="text-xs text-slate-500 mb-4">
+              💡 신규 규격인 <code>AQ.</code> 형태 및 기존 <code>AIza</code> 형태의 키를 모두 지원합니다.
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-3 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-sm"
+              >
+                닫기
+              </button>
+              {inputKey && (
+                <button
+                  type="button"
+                  onClick={() => onSave("")}
+                  className="px-3 py-3 rounded-2xl bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-xs"
+                >
+                  키 초기화
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onSave(inputKey.trim())}
+                className="flex-1 py-3 px-4 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm shadow-md"
+              >
+                저장하기
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function CameraRecorderView({ onClose, onRecordingFinished, onError }) {
+      const videoRef = useRef(null);
+      const mediaRecorderRef = useRef(null);
+      const streamRef = useRef(null);
+      const chunksRef = useRef([]);
+
+      const [isRecording, setIsRecording] = useState(false);
+      const [recordSeconds, setRecordSeconds] = useState(0);
+      const [recordedBlob, setRecordedBlob] = useState(null);
+      const timerRef = useRef(null);
+
+      useEffect(() => {
+        let active = true;
+
+        async function initCamera() {
+          try {
+            // Prioritize environment (rear) camera on mobile/tablet
+            const constraints = {
+              video: {
+                facingMode: { ideal: "environment" },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              },
+              audio: false
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            if (!active) {
+              stream.getTracks().forEach(t => t.stop());
+              return;
+            }
+
+            streamRef.current = stream;
+            if (videoRef.current) {
+              videoRef.current.srcObject = stream;
+              videoRef.current.play().catch(e => console.error(e));
+            }
+          } catch (err) {
+            console.error("Camera access failed", err);
+            onError("카메라 사용 권한이 없어 바로 촬영할 수 없어요. [기기에서 영상 선택]을 이용해 주세요.");
+          }
+        }
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          initCamera();
+        } else {
+          onError("이 기기에서는 바로 촬영할 수 없어요. [기기에서 영상 선택]을 이용해 주세요.");
+        }
+
+        return () => {
+          active = false;
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+          }
+          if (timerRef.current) clearInterval(timerRef.current);
+        };
+      }, []);
+
+      const startRecording = () => {
+        if (!streamRef.current) return;
+        chunksRef.current = [];
+        
+        let options = { mimeType: 'video/webm' };
+        if (!MediaRecorder.isTypeSupported('video/webm')) {
+          if (MediaRecorder.isTypeSupported('video/mp4')) {
+            options = { mimeType: 'video/mp4' };
+          } else {
+            options = {};
+          }
+        }
+
+        try {
+          const recorder = new MediaRecorder(streamRef.current, options);
+          recorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) {
+              chunksRef.current.push(e.data);
+            }
+          };
+
+          recorder.onstop = () => {
+            const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'video/webm' });
+            setRecordedBlob(blob);
+          };
+
+          recorder.start();
+          mediaRecorderRef.current = recorder;
+          setIsRecording(true);
+          setRecordSeconds(0);
+
+          timerRef.current = setInterval(() => {
+            setRecordSeconds(s => {
+              if (s >= 14) {
+                // Auto stop at 15s recommended max
+                stopRecording();
+                return 15;
+              }
+              return s + 1;
+            });
+          }, 1000);
+        } catch (err) {
+          onError("녹화를 시작할 수 없습니다. 기기 설정을 확인해 주세요.");
+        }
+      };
+
+      const stopRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.stop();
+        }
+        if (timerRef.current) clearInterval(timerRef.current);
+        setIsRecording(false);
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between text-white p-4">
+          {/* Header */}
+          <div className="flex items-center justify-between z-10">
+            <span className="bg-black/60 px-4 py-2 rounded-full text-sm sm:text-base font-bold">
+              몸 전체와 배트가 보이게 찍어 주세요
+            </span>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-full font-bold text-sm"
+            >
+              닫기
+            </button>
+          </div>
+
+          {/* Video Stream or Preview */}
+          <div className="relative flex-1 flex items-center justify-center my-2 overflow-hidden rounded-3xl bg-slate-950">
+            {!recordedBlob ? (
+              <video
+                ref={videoRef}
+                playsInline
+                muted
+                autoPlay
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <video
+                src={URL.createObjectURL(recordedBlob)}
+                controls
+                playsInline
+                autoPlay
+                className="w-full h-full object-contain"
+              />
+            )}
+
+            {/* Recording badge */}
+            {isRecording && (
+              <div className="absolute top-4 left-4 bg-rose-600 text-white font-extrabold px-3 py-1.5 rounded-full flex items-center gap-2 animate-pulse">
+                <span className="w-3 h-3 rounded-full bg-white"></span>
+                <span>녹화 중: {recordSeconds}초</span>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Action Controllers */}
+          <div className="flex items-center justify-center p-3 z-10">
+            {!recordedBlob ? (
+              <div>
+                {!isRecording ? (
+                  <button
+                    onClick={startRecording}
+                    className="w-20 h-20 rounded-full bg-rose-600 border-4 border-white flex items-center justify-center shadow-xl active:scale-95 transition"
+                  >
+                    <span className="w-8 h-8 rounded-full bg-white"></span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={stopRecording}
+                    className="w-20 h-20 rounded-full bg-slate-800 border-4 border-white flex items-center justify-center shadow-xl active:scale-95 transition"
+                  >
+                    <span className="w-8 h-8 rounded-md bg-rose-600"></span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex gap-4 w-full max-w-md">
+                <button
+                  onClick={() => {
+                    setRecordedBlob(null);
+                    // Re-bind live stream to video element
+                    setTimeout(() => {
+                      if (videoRef.current && streamRef.current) {
+                        videoRef.current.srcObject = streamRef.current;
+                        videoRef.current.play().catch(e => console.error(e));
+                      }
+                    }, 100);
+                  }}
+                  className="flex-1 py-4 px-5 rounded-2xl bg-white/20 hover:bg-white/30 text-white font-bold text-lg"
+                >
+                  다시 촬영
+                </button>
+                <button
+                  onClick={() => onRecordingFinished(recordedBlob)}
+                  className="flex-1 py-4 px-5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-kids-title text-2xl font-bold shadow-lg"
+                >
+                  사용하기
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
