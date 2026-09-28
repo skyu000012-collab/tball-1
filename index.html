@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>나의 티볼 타격 자세 분석</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FAF9F5; --card:#FFFFFF; --text:#1F2A44; --muted:#6B7686;
+  --primary:#2D9CDB; --primary-dark:#1B7FB8; --accent:#FFC93C;
+  --good:#4CAF7D; --improve:#FF6B6B; --line:#E7E5DE; --radius:22px;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  box-sizing:border-box;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:17px;line-height:1.5;overflow-x:hidden;}
+h1,h2,.headline{font-family:'Jua',sans-serif;font-weight:400;}
+#app{max-width:720px;margin:0 auto;min-height:100vh;padding:20px 18px 40px;display:flex;flex-direction:column;}
+.top{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:22px;}
+.step-pill{font-size:12px;padding:6px 10px;border-radius:999px;background:#EFEDE5;color:var(--muted);white-space:nowrap;}
+.step-pill.on{background:var(--primary);color:#fff;font-weight:700;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin-bottom:16px;}
+h1{font-size:30px;margin:0 0 8px;}
+h2{font-size:24px;margin:0 0 6px;}
+.sub{color:var(--muted);font-size:16px;margin:0 0 18px;}
+.big-btn{display:block;width:100%;font-size:20px;font-family:'Noto Sans KR',sans-serif;font-weight:700;padding:20px;border-radius:18px;border:none;background:var(--primary);color:#fff;cursor:pointer;margin-bottom:14px;min-height:48px;}
+.big-btn:active{background:var(--primary-dark);}
+.big-btn.secondary{background:#fff;color:var(--primary);border:2px solid var(--primary);}
+.big-btn.ghost{background:#F3F2EC;color:var(--text);}
+.big-btn:disabled{background:#D9D6CC;color:#fff;cursor:not-allowed;}
+.row{display:flex;gap:12px;flex-wrap:wrap;}
+.row .big-btn{flex:1;min-width:140px;}
+.note{background:#FFF7E0;border:1px solid #F3DFA0;border-radius:16px;padding:14px 16px;font-size:15px;color:#7A5B00;margin:14px 0;}
+.checklist{list-style:none;padding:0;margin:14px 0;font-size:17px;}
+.checklist li{padding:6px 0;}
+video{width:100%;border-radius:16px;background:#111;display:block;}
+.qgroup{margin-bottom:22px;}
+.qgroup p{font-weight:700;font-size:17px;margin:0 0 10px;}
+.opt-row{display:flex;gap:8px;flex-wrap:wrap;}
+.opt{flex:1;min-width:90px;padding:12px 6px;border-radius:14px;border:2px solid var(--line);background:#fff;font-size:14px;text-align:center;cursor:pointer;min-height:48px;}
+.opt.sel{border-color:var(--primary);background:#E8F4FC;font-weight:700;}
+.goal-opt{display:flex;align-items:center;gap:10px;width:100%;padding:16px;border-radius:16px;border:2px solid var(--line);background:#fff;font-size:17px;margin-bottom:10px;cursor:pointer;text-align:left;min-height:48px;}
+.goal-opt.sel{border-color:var(--accent);background:#FFF9E6;font-weight:700;}
+.spinner{width:56px;height:56px;border:6px solid #E7E5DE;border-top-color:var(--primary);border-radius:50%;margin:20px auto;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.result-card{border-radius:18px;padding:18px 20px;margin-bottom:12px;}
+.result-card.good{background:#EAF7EF;border:2px solid var(--good);}
+.result-card.improve{background:#FFF0F0;border:2px solid var(--improve);}
+.result-card.tip{background:#FFF7E0;border:2px solid var(--accent);}
+.result-card h3{margin:0 0 6px;font-size:16px;}
+.result-card p{margin:0;font-size:17px;}
+.two-col{display:flex;gap:12px;flex-wrap:wrap;}
+.two-col>div{flex:1;min-width:230px;}
+.mini-title{font-size:14px;color:var(--muted);font-weight:700;margin-bottom:6px;}
+input[type=text]{width:100%;padding:14px;font-size:16px;border-radius:14px;border:2px solid var(--line);font-family:inherit;}
+.center{text-align:center;}
+.hidden{display:none;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const GOALS=[
+ {key:'eyesOnBall',label:'공을 끝까지 보기',icon:'👀'},
+ {key:'contact',label:'배트와 공 정확하게 맞히기',icon:'🎯'},
+ {key:'bodyMovement',label:'몸을 함께 사용하기',icon:'🌀'},
+ {key:'balance',label:'균형 유지하기',icon:'⚖️'}
+];
+const QUESTIONS=[
+ {key:'eyesOnBall',q:'공을 끝까지 보면서 쳤나요?'},
+ {key:'contact',q:'배트와 공을 잘 맞혔나요?'},
+ {key:'bodyMovement',q:'팔뿐만 아니라 몸도 함께 움직였나요?'},
+ {key:'balance',q:'타격 후 몸의 균형을 유지했나요?'}
+];
+const OPTS=[{v:'good',e:'😊',t:'잘했어요'},{v:'practice',e:'🙂',t:'조금 더 연습해요'},{v:'retry',e:'🤔',t:'다시 살펴봐요'}];
+const USE_MOCK_AI=true;
+const MOCKS=[
+ {confidence:'high',goodPoint:'공을 치는 순간까지 공을 바라보는 모습이 잘 보여요.',improvementPoint:'타격할 때 팔뿐만 아니라 몸통도 함께 움직여 보면 좋아요.',practiceTip:'배트를 휘두를 때 몸도 함께 살짝 돌려 보세요.',focusArea:'bodyMovement',observationNote:'타격 순간 팔의 움직임에 비해 몸통의 회전이 적게 나타납니다.'},
+ {confidence:'medium',goodPoint:'준비 자세에서 몸의 중심이 안정적으로 보여요.',improvementPoint:'배트와 공이 만나는 지점이 조금씩 달라지고 있어요.',practiceTip:'공을 끝까지 보면서 배트 중심으로 맞혀 보세요.',focusArea:'contact',observationNote:'일부 장면에서 타점의 위치가 조금씩 다르게 보입니다.'},
+ {confidence:'low',goodPoint:'타격을 향한 준비 동작이 씩씩해요.',improvementPoint:'타격 후 자세가 흔들리는지는 조금 더 살펴봐야 해요.',practiceTip:'타격 후 잠깐 멈춰서 균형을 확인해 보세요.',focusArea:'balance',observationNote:'영상 각도상 타격 후 자세를 명확하게 확인하기 어렵습니다.'}
+];
+async function analyzeBattingVideo(videoFile){
+  if(USE_MOCK_AI){
+    return new Promise(res=>setTimeout(()=>res(MOCKS[Math.floor(Math.random()*MOCKS.length)]),1600));
+  }
+  // 실제 서비스에서는 안전한 백엔드를 통해 API를 호출합니다.
+}
+let state={
+ screen:'intro', target:'video1',
+ video1:{url:null}, video2:{url:null},
+ selfAssessment:{eyesOnBall:null,contact:null,bodyMovement:null,balance:null},
+ selectedGoal:null, aiAnalysis:null, comparison:null, finalGoal:null,
+ reflection:{change:null,tip:''}, stream:null, recorder:null, chunks:[], camErr:null, tooLong:false
+};
+const app=document.getElementById('app');
+function go(s){state.screen=s;render();}
+function goalLabel(key){const g=GOALS.find(x=>x.key===key);return g?g.icon+' '+g.label:'';}
+function confMsg(c){return c==='high'?'영상에서 움직임을 비교적 잘 확인할 수 있어요.':c==='medium'?'일부 움직임을 확인했어요. 영상을 다시 보면서 함께 확인해 보세요.':'영상만으로 자세를 정확하게 확인하기 어려워요.';}
+
+function bar(active){
+  const labels=['영상준비','영상확인','자기평가','AI분석','비교','목표'];
+  return '<div class="top">'+labels.map((l,i)=>'<span class="step-pill '+(i===active?'on':'')+'">'+(i+1)+'. '+l+'</span>').join('')+'</div>';
+}
+
+function screenIntro(){
+  return `<div class="card center">
+    <h1>나의 티볼 타격 자세 분석</h1>
+    <p class="sub">내 타격 모습을 보고 더 나은 치기 방법을 찾아보자!</p>
+    <button class="big-btn" onclick="go('prep')">타격 영상 분석하기</button>
+    <p class="sub">영상을 올리고<br>내가 먼저 평가한 다음<br>AI의 의견을 살펴봐요.</p>
+  </div>`;
+}
+
+function screenPrep(){
+  return bar(0)+`<div class="card">
+    <h2>타격 영상을 준비해요</h2>
+    <p class="sub">동영상을 고르거나 지금 바로 찍어 보세요.</p>
+    <label class="big-btn secondary" style="text-align:center;">기기에서 영상 선택
+      <input type="file" accept="video/*" style="display:none" onchange="onFile(event)">
+    </label>
+    <button class="big-btn" onclick="startCamera()">지금 촬영하기</button>
+    ${state.camErr?'<div class="note">'+state.camErr+'</div>':''}
+  </div>`;
+}
+
+function onFile(e){
+  const f=e.target.files[0];
+  if(!f)return;
+  if(state[state.target].url)URL.revokeObjectURL(state[state.target].url);
+  try{
+    const url=URL.createObjectURL(f);
+    state[state.target]={url};
+    state.tooLong=false;
+    go(state.target==='video1'?'confirm':'confirm2');
+  }catch(err){
+    state.camErr='재생할 수 없는 동영상입니다. 다른 영상을 선택해 주세요.';
+    render();
+  }
+}
+
+async function startCamera(){
+  state.camErr=null;
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:true});
+    state.stream=stream;
+    go('camera');
+  }catch(err){
+    state.camErr='카메라 사용 권한이 없어 바로 촬영할 수 없어요. 기기에서 영상을 선택해 주세요.';
+    render();
+  }
+}
+
+function screenCamera(){
+  return bar(0)+`<div class="card">
+    <h2>이렇게 찍어 주세요!</h2>
+    <ul class="checklist">
+      <li>✓ 몸 전체와 배트, 공이 보이게</li>
+      <li>✓ 타격 순간이 잘 보이게</li>
+      <li>✓ 카메라는 가능하면 고정하기</li>
+    </ul>
+    <div class="note">타격하는 사람 주변에 친구가 없는지 확인하고 촬영하세요.</div>
+    <video id="camVideo" autoplay playsinline muted></video>
+    <div class="row" style="margin-top:14px;">
+      <button class="big-btn" id="recBtn" onclick="toggleRec()">촬영 시작</button>
+      <button class="big-btn ghost" onclick="stopCameraOnly()">그만하기</button>
+    </div>
+  </div>`;
+}
+
+function stopCameraOnly(){
+  if(state.stream)state.stream.getTracks().forEach(t=>t.stop());
+  state.stream=null;
+  go('prep');
+}
+
+function toggleRec(){
+  const btn=document.getElementById('recBtn');
+  if(!state.recorder||state.recorder.state==='inactive'){
+    state.chunks=[];
+    try{
+      state.recorder=new MediaRecorder(state.stream);
+    }catch(e){
+      state.camErr='이 기기에서는 바로 촬영할 수 없어요. 기기에서 영상 선택을 이용해 주세요.';
+      render();return;
+    }
+    state.recorder.ondataavailable=ev=>state.chunks.push(ev.data);
+    state.recorder.onstop=()=>{
+      const blob=new Blob(state.chunks,{type:'video/webm'});
+      const url=URL.createObjectURL(blob);
+      state[state.target]={url};
+      state.stream.getTracks().forEach(t=>t.stop());
+      state.stream=null;
+      go(state.target==='video1'?'confirm':'confirm2');
+    };
+    state.recorder.start();
+    btn.textContent='촬영 중지';
+  } else {
+    state.recorder.stop();
+  }
+}
+
+function afterRenderCamera(){
+  const v=document.getElementById('camVideo');
+  if(v&&state.stream)v.srcObject=state.stream;
+}
+
+function videoConfirmBlock(urlKey,nextScreen,backScreen){
+  const url=state[urlKey].url;
+  return `<div class="card">
+    <h2>내 타격을 먼저 살펴봐요</h2>
+    <p class="sub">천천히 보면서 내 타격 모습을 살펴보세요.</p>
+    <video id="pv" src="${url}" controls playsinline></video>
+    <div class="row" style="margin-top:12px;">
+      <button class="big-btn ghost" onclick="document.getElementById('pv').playbackRate=0.5">0.5배속</button>
+      <button class="big-btn ghost" onclick="document.getElementById('pv').playbackRate=1">1배속</button>
+    </div>
+    ${state.tooLong?'<div class="note">타격 장면이 잘 보이도록 15초 이내의 짧은 영상을 사용해 주세요.</div>':''}
+    <div class="row" style="margin-top:10px;">
+      <button class="big-btn secondary" onclick="go('${backScreen}')">다시 선택하기</button>
+      <button class="big-btn" onclick="go('${nextScreen}')">${nextScreen==='selfAssess'?'내 타격 평가하기':'다음으로'}</button>
+    </div>
+  </div>`;
+}
+function afterRenderConfirm(){
+  const v=document.getElementById('pv');
+  if(v)v.onloadedmetadata=()=>{state.tooLong=v.duration>15;if(state.tooLong)render();};
+}
+
+function screenSelfAssess(){
+  const allSet=QUESTIONS.every(q=>state.selfAssessment[q.key]);
+  return bar(2)+`<div class="card">
+    <h2>먼저 내가 평가해 볼까요?</h2>
+    <p class="sub">영상을 보고 내 타격을 스스로 살펴봐요.</p>
+    ${QUESTIONS.map(q=>`<div class="qgroup"><p>${q.q}</p><div class="opt-row">
+      ${OPTS.map(o=>`<div class="opt ${state.selfAssessment[q.key]===o.v?'sel':''}" onclick="setSA('${q.key}','${o.v}')">${o.e}<br>${o.t}</div>`).join('')}
+    </div></div>`).join('')}
+    <h2 style="font-size:19px;">내가 다음에 고쳐보고 싶은 것은?</h2>
+    <p class="note">한 번에 하나만 바꿔 봐요!</p>
+    ${GOALS.map(g=>`<div class="goal-opt ${state.selectedGoal===g.key?'sel':''}" onclick="setGoal('${g.key}')">${g.icon} ${g.label}</div>`).join('')}
+    <button class="big-btn" ${(!allSet||!state.selectedGoal)?'disabled':''} onclick="runAI()">AI 분석 보기</button>
+  </div>`;
+}
+function setSA(k,v){state.selfAssessment[k]=v;render();}
+function setGoal(k){state.selectedGoal=k;render();}
+
+function runAI(){
+  go('aiLoading');
+  analyzeBattingVideo(state.video1).then(res=>{
+    state.aiAnalysis=res;go('aiResult');
+  }).catch(()=>{state.aiAnalysis=null;go('aiFail');});
+}
+
+function screenAiLoading(){
+  return bar(3)+`<div class="card center">
+    <h2>AI가 내 타격을 살펴보고 있어요</h2>
+    <div class="spinner"></div>
+    <p class="sub">잠시만 기다려 주세요.</p>
+  </div>`;
+}
+function screenAiFail(){
+  return bar(3)+`<div class="card center">
+    <h2>영상을 분석하지 못했어요.</h2>
+    <p class="sub">다시 시도하거나 영상을 다시 올려 주세요.</p>
+    <button class="big-btn" onclick="runAI()">다시 분석하기</button>
+    <button class="big-btn secondary" onclick="go('prep')">영상 다시 선택하기</button>
+  </div>`;
+}
+function screenAiResult(){
+  const a=state.aiAnalysis;
+  return bar(3)+`<div class="card">
+    <h2>AI가 내 타격에서 발견한 점</h2>
+    <div class="result-card good"><h3>👍 잘하고 있는 점</h3><p>${a.goodPoint}</p></div>
+    <div class="result-card improve"><h3>🔍 다음에 해볼 점</h3><p>${a.improvementPoint}</p></div>
+    <div class="result-card tip"><h3>💡 이렇게 해보세요</h3><p>${a.practiceTip}</p></div>
+    <div class="note">${confMsg(a.confidence)}</div>
+    <p class="sub"><b>AI의 의견은 참고 자료예요. 내 영상을 다시 보고 직접 확인해 보세요.</b></p>
+    <button class="big-btn" onclick="go('compare')">내 생각과 비교하기</button>
+  </div>`;
+}
+
+function screenCompare(){
+  const a=state.aiAnalysis;
+  return bar(4)+`<div class="card">
+    <h2>내 생각과 AI의 생각은 어떨까요?</h2>
+    <div class="two-col">
+      <div class="card" style="margin:0;"><div class="mini-title">내 생각</div><p>고치고 싶은 점: ${goalLabel(state.selectedGoal)}</p></div>
+      <div class="card" style="margin:0;"><div class="mini-title">AI의 관찰</div><p>${a.improvementPoint}</p></div>
+    </div>
+    <h2 style="font-size:19px;margin-top:18px;">두 생각이 비슷한가요?</h2>
+    <div class="opt-row">
+      <div class="opt ${state.comparison==='similar'?'sel':''}" onclick="setCmp('similar')">🟢<br>비슷해요</div>
+      <div class="opt ${state.comparison==='different'?'sel':''}" onclick="setCmp('different')">🟡<br>조금 달라요</div>
+      <div class="opt ${state.comparison==='unsure'?'sel':''}" onclick="setCmp('unsure')">🔵<br>잘 모르겠어요</div>
+    </div>
+    <button class="big-btn" ${!state.comparison?'disabled':''} onclick="go('goal')">다음으로</button>
+  </div>`;
+}
+function setCmp(v){state.comparison=v;render();}
+
+function screenGoal(){
+  const a=state.aiAnalysis;
+  return bar(5)+`<div class="card">
+    <h2>다음 타격에서 한 가지 바꿔 볼까요?</h2>
+    <div class="two-col">
+      <div class="card" style="margin:0;"><div class="mini-title">내가 생각한 목표</div><p>${goalLabel(state.selectedGoal)}</p></div>
+      <div class="card" style="margin:0;"><div class="mini-title">AI가 제안한 목표</div><p>${goalLabel(a.focusArea)}</p></div>
+    </div>
+    <p class="note" style="margin-top:16px;">이번에는 이것 하나만 집중해 봐요!</p>
+    ${GOALS.map(g=>`<div class="goal-opt ${state.finalGoal===g.key?'sel':''}" onclick="setFinal('${g.key}')">${g.icon} ${g.label}</div>`).join('')}
+    <button class="big-btn" ${!state.finalGoal?'disabled':''} onclick="go('practiceAgain')">다시 연습하러 가기</button>
+  </div>`;
+}
+function setFinal(k){state.finalGoal=k;render();}
+
+function screenPracticeAgain(){
+  state.target='video2';
+  return bar(5)+`<div class="card">
+    <h2>이제 다시 쳐 볼까요?</h2>
+    <p class="sub">내가 정한 한 가지, <b>${goalLabel(state.finalGoal)}</b>를 생각하면서 다시 쳐 보세요.</p>
+    <label class="big-btn secondary" style="text-align:center;">기기에서 영상 선택
+      <input type="file" accept="video/*" style="display:none" onchange="onFile(event)">
+    </label>
+    <button class="big-btn" onclick="startCamera()">지금 촬영하기</button>
+    <button class="big-btn ghost" onclick="go('reflection')">나중에 다시 하기</button>
+  </div>`;
+}
+
+function screenConfirm2(){
+  return `<div class="card">
+    <h2>두 번째 타격을 확인해요</h2>
+    <div class="two-col">
+      <div><div class="mini-title">첫 번째 타격</div><video src="${state.video1.url}" controls playsinline></video></div>
+      <div><div class="mini-title">다시 타격</div><video src="${state.video2.url}" controls playsinline></video></div>
+    </div>
+    <button class="big-btn" style="margin-top:14px;" onclick="go('reflection')">성찰하러 가기</button>
+  </div>`;
+}
+
+const CHANGE_OPTS=['공을 보는 것이 좋아졌어요.','공을 맞히는 것이 좋아졌어요.','몸을 사용하는 것이 좋아졌어요.','균형을 잡는 것이 좋아졌어요.','아직 잘 모르겠어요.'];
+function screenReflection(){
+  return `<div class="card">
+    <h2>오늘 나는 무엇을 발견했을까요?</h2>
+    <p style="font-weight:700;">처음보다 달라진 점은 무엇인가요?</p>
+    ${CHANGE_OPTS.map(c=>`<div class="goal-opt ${state.reflection.change===c?'sel':''}" onclick="setChange('${c.replace(/'/g,"\\'")}')">${c}</div>`).join('')}
+    <p style="font-weight:700;margin-top:16px;">오늘 내가 발견한 나의 타격 비법은?</p>
+    <input type="text" maxlength="50" placeholder="예: 공을 끝까지 보고 치기" value="${state.reflection.tip}" oninput="state.reflection.tip=this.value">
+    <button class="big-btn" style="margin-top:18px;" onclick="go('done')">수업 마치기</button>
+  </div>`;
+}
+function setChange(c){state.reflection.change=c;render();}
+
+function screenDone(){
+  return `<div class="card center">
+    <h2>오늘 수고했어요! ⚾</h2>
+    <p class="sub">${state.reflection.tip?('나의 타격 비법: "'+state.reflection.tip+'"'):'다음에 또 연습해 봐요!'}</p>
+    <button class="big-btn" onclick="location.reload()">처음으로</button>
+  </div>`;
+}
+
+function render(){
+  const s=state.screen;
+  let html='';
+  if(s==='intro')html=screenIntro();
+  else if(s==='prep'){state.target='video1';html=screenPrep();}
+  else if(s==='camera')html=screenCamera();
+  else if(s==='confirm')html=bar(1)+videoConfirmBlock('video1','selfAssess','prep');
+  else if(s==='selfAssess')html=screenSelfAssess();
+  else if(s==='aiLoading')html=screenAiLoading();
+  else if(s==='aiFail')html=screenAiFail();
+  else if(s==='aiResult')html=screenAiResult();
+  else if(s==='compare')html=screenCompare();
+  else if(s==='goal')html=screenGoal();
+  else if(s==='practiceAgain')html=screenPracticeAgain();
+  else if(s==='confirm2')html=screenConfirm2();
+  else if(s==='reflection')html=screenReflection();
+  else if(s==='done')html=screenDone();
+  app.innerHTML=html;
+  if(s==='camera')afterRenderCamera();
+  if(s==='confirm')afterRenderConfirm();
+}
+render();
+</script>
+</body>
+</html>
